@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Đường Khô</title>
+<meta name="description" content="Bản đồ ngập lụt, kẹt xe, đường xấu do người dân báo, kèm gợi ý lộ trình an toàn.">
+<meta name="theme-color" content="#0F2233">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout concept: map-first workspace. The map card leads on the left, an operating panel (route, incidents, report, alerts) sits right, and on phones the panel stacks under the map. */
+:root{
+  --bg:#F1F5F3; --surface:#FFFFFF; --ink:#0F2233; --muted:#4B5B68; --line:#D6DFE3;
+  --flood:#1B5FD1; --traffic:#C8302F; --road:#A84F00; --route:#0A7F5C;
+  --flood-bg:#E4EEFC; --traffic-bg:#FBE6E6; --road-bg:#FCEBD9; --route-bg:#DDF2EA;
+  --pin-fg:#FFFFFF;
+  --map-land:#E3EBE7; --map-water:#C6DBEE; --map-park:#D2E4CD; --map-road:#FFFFFF; --map-road2:#F2F7F4;
+  --shadow:0 2px 10px rgba(15,34,51,.2);
+  --font:'Be Vietnam Pro',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B151D; --surface:#13212C; --ink:#E7EEF2; --muted:#9AABB8; --line:#243846;
+    --flood:#7DAEFF; --traffic:#FF8581; --road:#F2A552; --route:#3FD6A0;
+    --flood-bg:#15304D; --traffic-bg:#47201F; --road-bg:#463016; --route-bg:#123B2F;
+    --pin-fg:#0B151D;
+    --map-land:#17262F; --map-water:#1B3550; --map-park:#1A3226; --map-road:#2A3F4E; --map-road2:#223542;
+    --shadow:0 2px 10px rgba(0,0,0,.55);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B151D; --surface:#13212C; --ink:#E7EEF2; --muted:#9AABB8; --line:#243846;
+  --flood:#7DAEFF; --traffic:#FF8581; --road:#F2A552; --route:#3FD6A0;
+  --flood-bg:#15304D; --traffic-bg:#47201F; --road-bg:#463016; --route-bg:#123B2F;
+  --pin-fg:#0B151D;
+  --map-land:#17262F; --map-water:#1B3550; --map-park:#1A3226; --map-road:#2A3F4E; --map-road2:#223542;
+  --shadow:0 2px 10px rgba(0,0,0,.55);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.45 var(--font)}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+.wrap{max-width:1280px;margin:0 auto;padding-block:16px 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mono{font-family:var(--mono);font-weight:500}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none;font-weight:800;font-size:22px;letter-spacing:-.01em}
+.brand i{width:36px;height:36px;border-radius:12px;background:var(--ink);color:var(--bg);display:grid;place-items:center}
+.tag{color:var(--muted);flex:1 1 220px;min-width:0}
+.btn{min-height:44px;padding:0 18px;border-radius:22px;border:2px solid var(--ink);background:var(--surface);font-weight:700;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary{background:var(--ink);color:var(--bg)}
+.btn.block{width:100%;min-height:52px;border-radius:26px;font-size:16px}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.search{flex:1 1 240px;min-width:0;display:flex;align-items:center;gap:10px;min-height:48px;padding:0 14px;border-radius:14px;border:2px solid var(--line);background:var(--surface)}
+.search input{flex:1;min-width:0;border:0;outline:0;background:transparent}
+.search:focus-within{border-color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:48px;padding:0 14px;border-radius:24px;border:2px solid var(--line);background:var(--surface);font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px}
+.chip[aria-pressed="true"]{border-color:var(--c);background:var(--cbg)}
+.chip[aria-pressed="false"]{color:var(--muted)}
+.chip b{font-family:var(--mono);font-weight:600;font-size:13px}
+.flood{--c:var(--flood);--cbg:var(--flood-bg)}
+.traffic{--c:var(--traffic);--cbg:var(--traffic-bg)}
+.road{--c:var(--road);--cbg:var(--road-bg)}
+.chip svg{color:var(--c)}
+.demo{margin-top:12px;font:500 12px/1.4 var(--mono);color:var(--muted)}
+
+/* layout */
+.app{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-top:14px}
+@media (min-width:960px){.app{grid-template-columns:minmax(0,1fr) 410px;align-items:start}.panel{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}}
+
+/* map */
+.mapcol{min-width:0}
+.map{position:relative;aspect-ratio:4/3;max-width:100%;border-radius:18px;overflow:hidden;background:var(--map-land);border:1px solid var(--line)}
+.map>svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.base-water{fill:none;stroke:var(--map-water);stroke-width:90;stroke-linecap:round}
+.base-park{fill:var(--map-park)}
+.base-major{fill:none;stroke:var(--map-road);stroke-width:20;stroke-linecap:round}
+.base-minor{fill:none;stroke:var(--map-road2);stroke-width:9;stroke-linecap:round}
+.r-case{fill:none;stroke:var(--map-road);stroke-width:17;stroke-linecap:round;stroke-linejoin:round}
+.r-on{fill:none;stroke:var(--route);stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
+.r-off{fill:none;stroke:var(--muted);stroke-width:5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:2 11;opacity:.8}
+.pin{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;padding:0;border:0;background:transparent;display:grid;place-items:center;z-index:3}
+.pin .body{width:34px;height:34px;border-radius:50%;background:var(--c);color:var(--pin-fg);border:3px solid var(--map-road);box-shadow:var(--shadow);display:grid;place-items:center}
+.pin.traffic .body{border-radius:10px}
+.pin.road .body{border-radius:8px;transform:rotate(45deg)}
+.pin.road .body svg{transform:rotate(-45deg)}
+.pin.weak .body{background:var(--cbg);color:var(--c);border:3px dashed var(--c);box-shadow:none}
+.pin.sel{z-index:5}
+.pin.sel .body{outline:3px solid var(--ink);outline-offset:3px}
+.pin.ghost .body{background:var(--ink);color:var(--bg);border-color:var(--map-road)}
+.me{position:absolute;left:50%;top:55%;width:20px;height:20px;margin:-10px 0 0 -10px;border-radius:50%;background:var(--ink);border:4px solid var(--map-road);box-shadow:0 0 0 10px color-mix(in srgb,var(--ink) 16%,transparent);z-index:2}
+.ep{position:absolute;z-index:2;display:flex;align-items:center;gap:6px;transform:translate(-14px,-50%);pointer-events:none}
+.ep.r{flex-direction:row-reverse;transform:translate(calc(-100% + 14px),-50%)}
+.ep span{width:28px;height:28px;border-radius:50%;background:var(--route);color:var(--pin-fg);border:3px solid var(--map-road);display:grid;place-items:center;flex:none}
+.ep em{font:700 12px var(--font);font-style:normal;background:var(--surface);padding:3px 8px;border-radius:8px;box-shadow:var(--shadow)}
+.near{position:absolute;left:10px;bottom:10px;max-width:min(340px,calc(100% - 20px));z-index:6;display:flex;align-items:center;gap:10px;padding:8px 14px 8px 10px;min-height:48px;border-radius:14px;border:0;background:var(--surface);box-shadow:var(--shadow);text-align:left}
+.near small{display:block;color:var(--muted);font-size:12px}
+.near strong{font-size:14px}
+.maphint{position:absolute;left:10px;right:10px;top:10px;z-index:6;padding:8px 12px;border-radius:12px;background:var(--ink);color:var(--bg);font-weight:600;font-size:13px;text-align:center}
+.legend{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:6px}
+.lg{width:20px;height:20px;border-radius:50%;background:var(--c);color:var(--pin-fg);display:grid;place-items:center}
+.lg.sq{border-radius:6px}.lg.dm{border-radius:5px;transform:rotate(45deg)}.lg.dm svg{transform:rotate(-45deg)}
+.lg.weak{background:var(--cbg);color:var(--c);border:2px dashed var(--c)}
+
+/* panel */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;min-width:0}
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line)}
+.tab{min-height:50px;border:0;background:transparent;font-weight:600;font-size:13px;color:var(--muted);padding:0 4px}
+.tab[aria-selected="true"]{color:var(--ink);font-weight:800;box-shadow:inset 0 -3px 0 var(--ink)}
+.pbody{padding:16px;display:grid;gap:14px;min-width:0}
+.h{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:var(--bg)}
+.seg button{min-height:44px;border:0;border-radius:10px;background:transparent;font-weight:500;font-size:13px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:700}
+.rcard{display:grid;gap:3px;width:100%;text-align:left;padding:12px 14px;border:2px solid var(--line);border-radius:14px;background:var(--surface)}
+.rcard[aria-pressed="true"]{border-color:var(--route);background:var(--route-bg)}
+.rtop{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted)}
+.badge{font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.04em;padding:2px 6px;border-radius:6px;border:1px solid var(--route);color:var(--route)}
+.mins{font-size:24px;font-weight:800;letter-spacing:-.01em}
+.mins small{font:500 12px var(--mono);color:var(--muted);margin-left:6px;letter-spacing:0}
+.sub{font-size:13px;color:var(--muted)}
+.warn{font-size:13px;font-weight:700;color:var(--traffic)}
+.list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.item{width:100%;display:grid;grid-template-columns:40px minmax(0,1fr) auto;align-items:center;gap:12px;text-align:left;padding:10px 12px;min-height:60px;border:2px solid var(--line);border-radius:14px;background:var(--surface)}
+.item[aria-current="true"]{border-color:var(--ink)}
+.ico{width:40px;height:40px;border-radius:50%;background:var(--cbg);color:var(--c);display:grid;place-items:center}
+.item b{display:block;font-size:14px}
+.item span.s{display:block;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.item .t{font:500 12px var(--mono);color:var(--muted);white-space:nowrap}
+.detail{border:2px solid var(--ink);border-radius:16px;padding:14px;display:grid;gap:12px}
+.dhead{display:flex;gap:12px;align-items:flex-start}
+.dhead h2{font-size:18px;font-weight:800}
+.dhead p{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.x{margin-left:auto;width:44px;height:44px;flex:none;border-radius:22px;border:0;background:var(--bg);display:grid;place-items:center}
+.meter{height:8px;border-radius:4px;background:var(--cbg);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--c)}
+.row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;font-size:13px}
+.row span:last-child{color:var(--muted)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn.on{background:var(--ink);color:var(--bg)}
+.thumb{width:100%;max-height:180px;object-fit:cover;border-radius:12px}
+.note-ok{font-size:13px;color:var(--route);font-weight:600}
+.lvls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.lvl{min-height:68px;padding:8px 6px;border:2px solid var(--line);border-radius:14px;background:var(--surface);display:grid;place-items:center;text-align:center;font-weight:600;font-size:14px}
+.lvl small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.lvl[aria-pressed="true"]{border-color:var(--c);background:var(--cbg);font-weight:800}
+.types{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.type{min-height:76px;border:2px solid var(--line);border-radius:14px;background:var(--surface);display:grid;place-items:center;align-content:center;gap:4px;font-weight:600;font-size:14px}
+.type svg{color:var(--c)}
+.type[aria-pressed="true"]{border-color:var(--c);background:var(--cbg);font-weight:800}
+.field{display:grid;gap:6px}
+.field label,.field .lab{font-size:13px;font-weight:600;color:var(--muted)}
+.field input[type=text]{min-height:48px;padding:0 14px;border-radius:14px;border:2px solid var(--line);background:var(--surface);min-width:0}
+.photo{display:flex;align-items:center;gap:10px;min-height:56px;padding:0 14px;border:2px dashed var(--muted);border-radius:14px;font-weight:600;cursor:pointer}
+.photo input{position:absolute;opacity:0;width:1px;height:1px}
+.photo:focus-within{outline:3px solid var(--ink);outline-offset:2px}
+.loc{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 14px;border-radius:14px;background:var(--bg);font-size:14px}
+.loc .btn{min-height:40px;padding:0 14px;font-size:13px}
+.fine{font-size:12px;color:var(--muted)}
+.card{border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:grid;gap:6px}
+.profile{display:flex;align-items:center;gap:14px}
+.av{width:52px;height:52px;border-radius:50%;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-weight:800;font-size:18px;flex:none}
+.sw{display:flex;align-items:center;gap:12px;min-height:56px;border-bottom:1px solid var(--line)}
+.sw:last-child{border-bottom:0}
+.sw span{flex:1;font-size:14px;font-weight:500}
+.sw button{width:56px;min-height:44px;border:0;background:transparent;padding:0;display:grid;place-items:center}
+.sw i{width:48px;height:28px;border-radius:14px;background:var(--muted);padding:2px;display:flex;justify-content:flex-start}
+.sw i::after{content:"";width:24px;height:24px;border-radius:50%;background:var(--surface)}
+.sw button[aria-checked="true"] i{background:var(--route);justify-content:flex-end}
+.navbar{display:grid;gap:4px;padding:12px 14px;border-radius:14px;background:var(--ink);color:var(--bg)}
+.navbar b{font-size:16px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:50;max-width:min(420px,calc(100vw - 32px));padding:12px 18px;border-radius:14px;background:var(--ink);color:var(--bg);font-weight:600;font-size:14px;box-shadow:var(--shadow);text-align:center}
+@media (max-width:520px){.tag{display:none}.brand{flex:1}.pin{width:44px;height:44px}}
+@media (prefers-reduced-motion:no-preference){.btn,.chip,.rcard,.item,.lvl,.type{transition:background-color .15s,border-color .15s}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#lo-trinh" aria-label="Đường Khô, về trang lộ trình"><i aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></svg></i>Đường Khô</a>
+    <p class="tag">Bản đồ ngập, kẹt xe, đường xấu do người dân báo</p>
+    <button class="btn primary" id="goReport" type="button">+ Báo điểm</button>
+  </header>
+
+  <div class="tools">
+    <label class="search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="Tìm đường hoặc khu vực có sự cố" aria-label="Tìm đường hoặc khu vực có sự cố" autocomplete="off"></label>
+    <div class="chips" id="chips" role="group" aria-label="Lớp bản đồ"></div>
+  </div>
+  <p class="demo">BẢN DEMO · Sự cố trên bản đồ là dữ liệu ví dụ, không phản ánh tình hình thật.</p>
+
+  <main class="app">
+    <section class="mapcol" aria-label="Bản đồ sự cố">
+      <div class="map" id="map">
+        <svg viewBox="0 0 800 600" preserveAspectRatio="none" aria-hidden="true">
+          <path class="base-water" d="M-40 600 C 180 540, 420 610, 840 520"/>
+          <rect class="base-park" x="262" y="284" width="126" height="94" rx="12"/>
+          <rect class="base-park" x="574" y="184" width="104" height="74" rx="12"/>
+          <g class="base-minor"><path d="M-10 330H810"/><path d="M-10 220H810"/><path d="M-10 440H810"/><path d="M185 -10V610"/><path d="M325 -10V610"/><path d="M480 -10V610"/><path d="M625 -10V610"/></g>
+          <g class="base-major"><path d="M-10 170H810"/><path d="M-10 270H810"/><path d="M-10 390H810"/><path d="M-10 490H810"/><path d="M120 -10V610"/><path d="M250 -10V610"/><path d="M400 -10V610"/><path d="M560 -10V610"/><path d="M690 -10V610"/></g>
+          <g id="routes"></g>
+        </svg>
+        <div id="ends"></div>
+        <div class="me" aria-label="Vị trí của bạn" role="img"></div>
+        <div id="pins"></div>
+        <div id="hint"></div>
+        <div id="near"></div>
+      </div>
+      <ul class="legend" aria-label="Chú thích">
+        <li class="flood"><span class="lg"></span>Ngập</li>
+        <li class="traffic"><span class="lg sq"></span>Kẹt xe</li>
+        <li class="road"><span class="lg dm"></span>Đường xấu</li>
+        <li class="flood"><span class="lg weak"></span>Chưa đủ 3 người xác nhận</li>
+      </ul>
+    </section>
+
+    <section class="panel" id="panel" aria-label="Bảng điều khiển">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="pbody" id="body" role="tabpanel"></div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d');
+const T0=Date.now(), MIN=60000, UNIT=6; /* 1 đơn vị bản đồ = 6 m */
+
+const P={
+ flood:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+ traffic:'<path d="M5 16l1.5-5h11L19 16M4 16h16v3H4zM7 19v2M17 19v2"/>',
+ road:'<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>', x:'<path d="M6 6l12 12M18 6L6 18"/>',
+ search:'<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+ cam:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+ pin:'<path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+ home:'<path d="M3 11l9-8 9 8M5 10v10h14V10"/>', work:'<rect x="4" y="7" width="16" height="13" rx="2"/><path d="M9 7V4h6v3"/>',
+ flag:'<path d="M5 21V4M5 4h12l-2 4 2 4H5"/>'
+};
+const ic=(n,s=20)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n]}</svg>`;
+
+const TYPES={
+ flood:{name:'Ngập',w:3,ttl:120,levels:[['Mắt cá','dưới 15 cm'],['Bánh xe','15 đến 30 cm'],['Yên xe','trên 30 cm']]},
+ traffic:{name:'Kẹt xe',w:1,ttl:60,levels:[['Chậm','xe nhích từng đoạn'],['Ùn','dừng nhiều lần'],['Đứng yên','gần như không nhích']]},
+ road:{name:'Đường xấu',w:1,ttl:1440,levels:[['Ổ gà nhỏ','đi chậm là qua'],['Hư hỏng','nhiều ổ gà, lún'],['Rất xấu','dễ hỏng xe']]}
+};
+const VEH={
+ moto:{name:'Xe máy',k:1,flood:[2,8,25],traffic:[2,5,9],road:[1,2,4]},
+ car:{name:'Ô tô',k:1.1,flood:[0,5,30],traffic:[2,5,9],road:[1,2,3]},
+ bike:{name:'Xe đạp',k:1.7,flood:[3,9,25],traffic:[1,3,5],road:[2,4,7]},
+ walk:{name:'Đi bộ',k:3.8,flood:[4,9,15],traffic:[0,0,1],road:[0,1,2]}
+};
+const ME={x:400,y:330}, A={x:120,y:490}, B={x:690,y:170};
+const ROUTES=[
+ {id:'fast',name:'Đường thẳng qua cầu',base:24,pts:[[120,490],[250,490],[250,390],[560,390],[560,270],[690,270],[690,170]]},
+ {id:'safe',name:'Vòng phía Bắc',base:31,pts:[[120,490],[120,170],[400,170],[690,170]]},
+ {id:'inner',name:'Đường nội khu',base:28,pts:[[120,490],[120,390],[400,390],[400,170],[690,170]]}
+];
+const seed=[
+ {id:'f1',type:'flood',level:2,x:250,y:440,street:'Đường Nguyễn Hữu Cảnh, gần cầu',ago:12,conf:5,gone:0,exp:108},
+ {id:'f2',type:'flood',level:1,x:560,y:330,street:'Đường Điện Biên Phủ, trước chợ',ago:25,conf:3,gone:1,exp:70},
+ {id:'f3',type:'flood',level:3,x:400,y:490,street:'Ngã tư Hàng Xanh',ago:40,conf:6,gone:0,exp:95},
+ {id:'t1',type:'traffic',level:3,x:400,y:270,street:'Đường Xô Viết Nghệ Tĩnh, hướng vào trung tâm',ago:8,conf:4,gone:0,exp:45},
+ {id:'t2',type:'traffic',level:1,x:690,y:220,street:'Cầu Thị Nghè',ago:20,conf:2,gone:0,exp:40},
+ {id:'r1',type:'road',level:2,x:320,y:270,street:'Đường Bạch Đằng',ago:180,conf:7,gone:0,exp:1200},
+ {id:'r2',type:'road',level:2,x:120,y:330,street:'Đường Phan Đăng Lưu',ago:300,conf:4,gone:0,exp:1000}
+];
+const incs=seed.map(s=>Object.assign({},s,{created:T0-s.ago*MIN,expires:T0+s.exp*MIN,resolved:false}));
+const TABS=[['lo-trinh','Lộ trình'],['su-co','Sự cố'],['bao-diem','Báo điểm'],['canh-bao','Cảnh báo']];
+const S={tab:'lo-trinh',veh:'moto',route:'safe',layers:{flood:true,traffic:true,road:true},q:'',sel:null,nav:false,
+ rep:{type:'flood',level:1,pos:null,note:'',photo:null},votes:{},flagged:{},mine:0,uid:1,
+ prefs:{home:true,weather:true,voice:false}};
+try{const p=JSON.parse(localStorage.getItem('duongkho-prefs')||'null');if(p)Object.assign(S.prefs,p);}catch(e){}
+
+/* helpers */
+const active=()=>incs.filter(i=>!i.resolved&&i.expires>Date.now());
+const lvl=i=>TYPES[i.type].levels[i.level-1][0];
+const title=i=>i.type==='flood'?'Ngập mức '+lvl(i).toLowerCase():TYPES[i.type].name+': '+lvl(i).toLowerCase();
+const match=i=>!S.q||norm(title(i)+' '+i.street).includes(norm(S.q));
+const visible=()=>active().filter(i=>S.layers[i.type]&&match(i));
+const fmtMin=m=>m<60?m+' phút':Math.floor(m/60)+' giờ'+(m%60?' '+(m%60)+' phút':'');
+const ago=i=>{const m=Math.floor((Date.now()-i.created)/MIN);return m<1?'vừa xong':m<60?m+' phút trước':Math.floor(m/60)+' giờ trước'};
+const left=i=>fmtMin(Math.max(1,Math.round((i.expires-Date.now())/MIN)));
+const fmtDist=m=>m<1000?(Math.max(50,Math.round(m/50)*50))+' m':(m/1000).toFixed(1).replace('.',',')+' km';
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+function segInfo(pts,p){let best={d:1e9,s:0},acc=0;
+ for(let k=0;k<pts.length-1;k++){const [x1,y1]=pts[k],[x2,y2]=pts[k+1],dx=x2-x1,dy=y2-y1,L2=dx*dx+dy*dy,L=Math.sqrt(L2);
+  let t=L2?((p.x-x1)*dx+(p.y-y1)*dy)/L2:0;t=Math.max(0,Math.min(1,t));
+  const d=Math.hypot(p.x-(x1+t*dx),p.y-(y1+t*dy));if(d<best.d)best={d,s:acc+t*L};acc+=L;}
+ return best;}
+const pathLen=pts=>pts.slice(1).reduce((a,p,k)=>a+Math.hypot(p[0]-pts[k][0],p[1]-pts[k][1]),0);
+function stats(r){const v=VEH[S.veh];let pen=0,risk=0,blocked=false;
+ const on=active().map(i=>({i,m:segInfo(r.pts,i)})).filter(o=>o.m.d<=16).sort((a,b)=>a.m.s-b.m.s);
+ on.forEach(({i})=>{pen+=v[i.type][i.level-1];risk+=TYPES[i.type].w*i.level;if(i.type==='flood'&&i.level===3&&S.veh!=='walk')blocked=true;});
+ return {on,mins:Math.round(r.base*v.k+pen),risk,blocked,km:pathLen(r.pts)*UNIT/1000};}
+function best(){const st={};ROUTES.forEach(r=>st[r.id]=stats(r));
+ const fast=ROUTES.reduce((a,b)=>st[b.id].mins<st[a.id].mins?b:a).id;
+ const safe=ROUTES.reduce((a,b)=>{const x=st[a.id],y=st[b.id];return (y.risk<x.risk||(y.risk===x.risk&&y.mins<x.mins))?b:a}).id;
+ return {st,fast,safe};}
+function summ(on){const c={flood:0,traffic:0,road:0};on.forEach(o=>c[o.i.type]++);
+ const parts=[];if(c.flood)parts.push(c.flood+' điểm ngập');if(c.traffic)parts.push(c.traffic+' đoạn kẹt xe');if(c.road)parts.push(c.road+' đoạn đường xấu');
+ return parts.length?'Qua '+parts.join(', '):'Không có sự cố được báo';}
+let toastT;
+function toast(msg){const t=$('#toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true},3600);}
+const narrow=()=>window.matchMedia('(max-width:959px)').matches;
+function toPanel(){if(!narrow())return;const rm=window.matchMedia('(prefers-reduced-motion:reduce)').matches;$('#panel').scrollIntoView({behavior:rm?'auto':'smooth',block:'start'});}
+
+/* render: chips, tabs */
+function renderChips(){const a=active();
+ $('#chips').innerHTML=Object.keys(TYPES).map(t=>`<button type="button" class="chip ${t}" data-layer="${t}" aria-pressed="${S.layers[t]}">${ic(t,16)}${TYPES[t].name}<b>${a.filter(i=>i.type===t).length}</b></button>`).join('');}
+function renderTabs(){$('#tabs').innerHTML=TABS.map(([id,n])=>`<button type="button" class="tab" role="tab" id="tab-${id}" data-tab="${id}" aria-selected="${S.tab===id}">${n}</button>`).join('');
+ $('#body').setAttribute('aria-labelledby','tab-'+S.tab);}
+
+/* render: map */
+function pinHtml(i){const conf=i.conf>=3;
+ return `<button type="button" class="pin ${i.type} ${conf?'':'weak'} ${S.sel===i.id?'sel':''}" data-open="${i.id}" style="left:${i.x/8}%;top:${i.y/6}%" aria-label="${esc(title(i))}, ${esc(i.street)}, ${conf?'đã xác nhận':'chưa đủ xác nhận'}"><span class="body">${ic(i.type,18)}</span></button>`;}
+function renderMap(){
+ const vis=visible();let html=vis.map(pinHtml).join('');
+ if(S.tab==='bao-diem'&&S.rep.pos){const t=S.rep.type;html+=`<span class="pin ghost ${t}" style="left:${S.rep.pos.x/8}%;top:${S.rep.pos.y/6}%"><span class="body">${ic('plus',18)}</span></span>`;}
+ $('#pins').innerHTML=html;
+ const sel=S.route;
+ $('#routes').innerHTML=[...ROUTES].sort((a,b)=>(a.id===sel)-(b.id===sel)).map(r=>{const p=r.pts.map(q=>q.join(',')).join(' ');
+  return r.id===sel?`<polyline class="r-case" points="${p}"/><polyline class="r-on" points="${p}"/>`:`<polyline class="r-off" points="${p}"/>`;}).join('');
+ $('#ends').innerHTML=`<div class="ep" style="left:${A.x/8}%;top:${A.y/6}%"><span>${ic('home',14)}</span><em>Nhà</em></div><div class="ep r" style="left:${B.x/8}%;top:${B.y/6}%"><span>${ic('work',14)}</span><em>Công ty</em></div>`;
+ $('#hint').innerHTML=S.tab==='bao-diem'?'<div class="maphint">Chạm vào bản đồ để chọn vị trí sự cố</div>':'';
+ const nr=vis.slice().sort((a,b)=>dist(a,ME)-dist(b,ME))[0];
+ $('#near').innerHTML=nr&&S.tab!=='bao-diem'?`<button type="button" class="near ${nr.type}" data-open="${nr.id}"><span class="ico">${ic(nr.type,20)}</span><span><small>Gần bạn nhất · ${fmtDist(dist(nr,ME)*UNIT)}</small><strong>${esc(title(nr))}</strong></span></button>`:'';
+}
+
+/* panel: tabs content */
+function itemHtml(i,extra){const conf=i.conf>=3;
+ return `<li><button type="button" class="item ${i.type}" data-open="${i.id}" aria-current="${S.sel===i.id}"><span class="ico">${ic(i.type,20)}</span><span><b>${esc(title(i))}</b><span class="s">${esc(i.street)}${conf?'':' · chưa đủ xác nhận'}</span></span><span class="t">${extra||ago(i)}</span></button></li>`;}
+
+function routeTab(){const {st,fast,safe}=best();
+ const cards=ROUTES.map(r=>{const s=st[r.id];const b=[];if(r.id===fast)b.push('Nhanh nhất');if(r.id===safe)b.push('An toàn nhất');
+  return `<button type="button" class="rcard" data-route="${r.id}" aria-pressed="${S.route===r.id}"><span class="rtop">${esc(r.name)}${b.map(x=>`<span class="badge">${x}</span>`).join('')}</span><span class="mins">${fmtMin(s.mins)}<small>${s.km.toFixed(1).replace('.',',')} km</small></span><span class="sub">${summ(s.on)}</span>${s.blocked?`<span class="warn">Có đoạn ngập sâu, ${VEH[S.veh].name.toLowerCase()} khó qua</span>`:''}</button>`;}).join('');
+ const cur=st[S.route];
+ const pts=cur.on.length?`<div><div class="h">Điểm trên tuyến đã chọn</div></div><ul class="list">${cur.on.map(o=>itemHtml(o.i,fmtDist(o.m.s*UNIT))).join('')}</ul>`:'<p class="sub">Tuyến này chưa có sự cố nào được báo.</p>';
+ let nav='';
+ if(S.nav){const nx=cur.on[0];nav=`<div class="navbar" role="status"><span class="mono" style="font-size:12px">ĐANG DẪN ĐƯỜNG${S.prefs.voice?' · GIỌNG NÓI BẬT':''}</span><b>${nx?`Sắp tới: ${esc(title(nx.i))}, cách ${fmtDist(nx.m.s*UNIT)}`:'Đường phía trước thông thoáng'}</b></div>`;}
+ return `<div class="card" style="gap:2px"><span class="h">Từ</span><b>Nhà, Bình Thạnh</b><span class="h" style="margin-top:6px">Đến</span><b>Công ty, Quận 1</b></div>
+ <div class="seg" role="group" aria-label="Phương tiện">${Object.keys(VEH).map(k=>`<button type="button" data-veh="${k}" aria-pressed="${S.veh===k}">${VEH[k].name}</button>`).join('')}</div>
+ ${cards}${nav}<button type="button" class="btn primary block" data-act="nav">${S.nav?'Dừng dẫn đường':'Bắt đầu đi'}</button>${pts}`;}
+
+function detailHtml(i){const t=TYPES[i.type],conf=i.conf>=3,v=S.votes[i.id];
+ return `<div class="detail ${i.type}"><div class="dhead"><span class="ico">${ic(i.type,22)}</span><div style="min-width:0"><h2>${esc(title(i))}</h2><p>${esc(i.street)}</p><p class="mono">Báo ${ago(i)} · ${t.levels[i.level-1][1]}</p></div><button type="button" class="x" data-act="close" aria-label="Đóng chi tiết">${ic('x',18)}</button></div>
+ ${i.photo?`<img class="thumb" src="${i.photo}" alt="Ảnh hiện trường do bạn chụp">`:''}
+ <div><div class="row"><span><b>${conf?'Đã xác nhận':'Chưa đủ xác nhận'}</b></span><span>${i.conf} người xác nhận${i.gone?' · '+i.gone+' báo đã hết':''}</span></div><div class="meter" style="margin-top:8px"><i style="width:${Math.min(100,i.conf/6*100)}%"></i></div></div>
+ <p class="fine">Tự hết hạn sau ${left(i)} nếu không ai xác nhận lại. ${conf?'':'Cần 3 người xác nhận để hiện đậm trên bản đồ.'}</p>
+ <div class="two"><button type="button" class="btn ${v==='conf'?'on':''}" data-conf="${i.id}" aria-pressed="${v==='conf'}">${ic('plus',16)}Vẫn còn</button><button type="button" class="btn ${v==='gone'?'on':''}" data-gone="${i.id}" aria-pressed="${v==='gone'}">${ic('x',16)}Đã hết</button></div>
+ ${S.flagged[i.id]?'<p class="note-ok">Đã gửi báo cáo sai. Cảm ơn bạn.</p>':`<button type="button" class="btn" data-flag="${i.id}" style="border-color:var(--line);font-weight:600">Báo cáo sai hoặc spam</button>`}</div>`;}
+
+function incTab(){const list=visible().sort((a,b)=>b.created-a.created);
+ const sel=incs.find(i=>i.id===S.sel&&!i.resolved&&i.expires>Date.now());
+ return `${sel?detailHtml(sel):''}<div class="h">${list.length} sự cố đang hiện${S.q?' theo tìm kiếm':''}</div>${list.length?`<ul class="list">${list.map(i=>itemHtml(i)).join('')}</ul>`:'<p class="sub">Không có sự cố nào khớp. Thử bật thêm lớp bản đồ hoặc xóa từ khóa tìm kiếm.</p>'}`;}
+
+function repTab(){const r=S.rep,t=TYPES[r.type];
+ const types=Object.keys(TYPES).map(k=>`<button type="button" class="type ${k}" data-rtype="${k}" aria-pressed="${r.type===k}">${ic(k,24)}${TYPES[k].name}</button>`).join('');
+ const lv=t.levels.map((l,k)=>`<button type="button" class="lvl ${r.type}" data-rlevel="${k+1}" aria-pressed="${r.level===k+1}"><span>${l[0]}<small>${l[1]}</small></span></button>`).join('');
+ return `<div class="field"><span class="lab">Loại sự cố</span><div class="types" role="group" aria-label="Loại sự cố">${types}</div></div>
+ <div class="field"><span class="lab">${r.type==='flood'?'Mức ngập':r.type==='traffic'?'Mức kẹt':'Mức hư hỏng'}</span><div class="lvls" role="group" aria-label="Mức độ">${lv}</div></div>
+ <div class="field"><span class="lab">Vị trí</span><div class="loc">${ic('pin',18)}<span style="flex:1;min-width:140px">${r.pos?'Đã chọn vị trí trên bản đồ':'Chưa chọn vị trí'}</span><button type="button" class="btn" data-act="me">Dùng vị trí của tôi</button></div></div>
+ <div class="field"><label for="note">Ghi chú (không bắt buộc)</label><input id="note" type="text" maxlength="120" value="${esc(r.note)}" placeholder="Ví dụ: nước chảy xiết, xe nhỏ khó qua"></div>
+ <div class="field"><span class="lab">Ảnh hiện trường</span>${r.photo?`<img class="thumb" src="${r.photo}" alt="Ảnh bạn đã chọn"><button type="button" class="btn" data-act="nophoto" style="border-color:var(--line)">Bỏ ảnh</button>`:`<label class="photo" for="photo">${ic('cam',22)}Chọn hoặc chụp ảnh<input id="photo" type="file" accept="image/*"></label>`}</div>
+ <button type="button" class="btn primary block" data-act="submit">Gửi báo cáo</button>
+ <p class="fine">Điểm mới hiện nét đứt cho đến khi có 3 người xác nhận, rồi tự hết hạn sau ${t.ttl>=1440?'24 giờ':t.ttl/60+' giờ'}. Tên bạn không hiện trên bản đồ.</p>`;}
+
+function alertTab(){const {st,safe}=best();const n=st[safe].on.length;
+ const sw=(k,l)=>`<div class="sw"><span id="l-${k}">${l}</span><button type="button" role="switch" aria-checked="${S.prefs[k]}" aria-labelledby="l-${k}" data-pref="${k}"><i></i></button></div>`;
+ return `<div class="profile"><div class="av" aria-hidden="true">B</div><div><b style="font-size:17px">Bạn</b><p class="sub">Điểm uy tín 82 · ${S.mine} báo cáo trong phiên này</p></div></div>
+ <div class="meter route" style="--cbg:var(--route-bg);--c:var(--route)"><i style="width:82%"></i></div>
+ <div class="h">Địa điểm quen thuộc</div>
+ <div class="card"><div style="display:flex;gap:10px;align-items:center">${ic('home',20)}<b>Nhà</b><span class="sub">Bình Thạnh</span></div><div style="display:flex;gap:10px;align-items:center">${ic('work',20)}<b>Công ty</b><span class="sub">Quận 1</span></div><p class="fine">Đang theo dõi tuyến An toàn nhất: ${n?n+' sự cố':'chưa có sự cố'}.</p></div>
+ <div class="h">Thông báo</div>
+ <div>${sw('home','Ngập trên đường quen thuộc')}${sw('weather','Mưa lớn và triều cường')}${sw('voice','Cảnh báo bằng giọng nói khi dẫn đường')}</div>
+ ${S.prefs.weather?`<div class="card"><span class="badge" style="width:fit-content">Ví dụ</span><b>Mưa lớn dự kiến lúc 16:00</b><p class="sub">Nên đi trước 15:30 theo tuyến An toàn nhất để tránh các điểm ngập hay xuất hiện.</p></div>`:''}`;}
+
+function renderBody(){const f={'lo-trinh':routeTab,'su-co':incTab,'bao-diem':repTab,'canh-bao':alertTab}[S.tab];$('#body').innerHTML=f();}
+function render(){renderChips();renderTabs();renderBody();renderMap();}
+function go(t){S.tab=t;try{if(location.hash!=='#'+t)history.replaceState(null,'','#'+t);}catch(e){}render();}
+
+/* actions */
+function openInc(id){S.sel=id;go('su-co');toPanel();}
+function vote(id,kind){const i=incs.find(x=>x.id===id);if(!i)return;const v=S.votes[id];if(v===kind)return;
+ if(v==='conf'){i.conf--;i.expires-=30*MIN;} if(v==='gone'){i.gone--;}
+ S.votes[id]=kind;
+ if(kind==='conf'){i.conf++;i.expires+=30*MIN;toast('Cảm ơn bạn. Điểm này được giữ thêm 30 phút.');}
+ else{i.gone++;if(i.gone>=2){i.resolved=true;S.sel=null;toast('Đã gỡ điểm sau 2 người báo hết.');}else toast('Đã ghi nhận. Cần thêm 1 người báo hết để gỡ điểm.');}
+ render();}
+function submit(){const r=S.rep;
+ if(!r.pos){toast('Hãy chạm vào bản đồ hoặc dùng vị trí của bạn trước.');return;}
+ const t=TYPES[r.type],id='u'+(S.uid++);
+ incs.push({id,type:r.type,level:r.level,x:r.pos.x,y:r.pos.y,street:r.note.trim()||'Vị trí do bạn chọn',created:Date.now(),expires:Date.now()+t.ttl*MIN,conf:1,gone:0,resolved:false,photo:r.photo});
+ S.mine++;S.layers[r.type]=true;S.sel=id;S.votes[id]='conf';
+ S.rep={type:r.type,level:1,pos:null,note:'',photo:null};
+ toast('Đã gửi. Điểm sẽ hiện đậm khi có 3 người xác nhận.');go('su-co');}
+
+document.addEventListener('click',e=>{
+ const el=e.target.closest('button,[data-open]');
+ if(!el){return;}
+ const d=el.dataset;
+ if(d.tab)return go(d.tab);
+ if(d.layer){S.layers[d.layer]=!S.layers[d.layer];return render();}
+ if(d.veh){S.veh=d.veh;return render();}
+ if(d.route){S.route=d.route;return render();}
+ if(d.open)return openInc(d.open);
+ if(d.conf)return vote(d.conf,'conf');
+ if(d.gone)return vote(d.gone,'gone');
+ if(d.flag){S.flagged[d.flag]=true;toast('Đã gửi. Điểm bị báo sai nhiều lần sẽ được kiểm tra lại.');return renderBody();}
+ if(d.rtype){S.rep.type=d.rtype;S.rep.level=1;return render();}
+ if(d.rlevel){S.rep.level=+d.rlevel;return renderBody();}
+ if(d.pref){S.prefs[d.pref]=!S.prefs[d.pref];try{localStorage.setItem('duongkho-prefs',JSON.stringify(S.prefs));}catch(e){}return renderBody();}
+ const a=d.act;
+ if(a==='close'){S.sel=null;return render();}
+ if(a==='me'){S.rep.pos={x:ME.x,y:ME.y};toast('Đã dùng vị trí của bạn.');return render();}
+ if(a==='nophoto'){S.rep.photo=null;return renderBody();}
+ if(a==='submit')return submit();
+ if(a==='nav'){S.nav=!S.nav;if(S.nav&&S.prefs.voice&&'speechSynthesis' in window){try{const nx=stats(ROUTES.find(r=>r.id===S.route)).on[0];speechSynthesis.speak(new SpeechSynthesisUtterance(nx?'Sắp tới '+title(nx.i)+', cách '+fmtDist(nx.m.s*UNIT):'Đường phía trước thông thoáng'));}catch(e){}}return renderBody();}
+});
+$('#goReport').addEventListener('click',()=>{go('bao-diem');toPanel();});
+$('#q').addEventListener('input',e=>{S.q=e.target.value;if(S.tab==='lo-trinh'&&S.q)S.tab='su-co';render();});
+$('#map').addEventListener('click',e=>{
+ if(e.target.closest('button')||S.tab!=='bao-diem')return;
+ const b=$('#map').getBoundingClientRect();
+ S.rep.pos={x:Math.max(10,Math.min(790,(e.clientX-b.left)/b.width*800)),y:Math.max(10,Math.min(590,(e.clientY-b.top)/b.height*600))};
+ render();});
+$('#body').addEventListener('input',e=>{if(e.target.id==='note')S.rep.note=e.target.value;});
+$('#body').addEventListener('change',e=>{if(e.target.id==='photo'&&e.target.files&&e.target.files[0]){const f=e.target.files[0];
+ if(f.size>8*1024*1024){toast('Ảnh lớn hơn 8 MB. Hãy chọn ảnh nhỏ hơn.');return;}
+ try{S.rep.photo=URL.createObjectURL(f);}catch(err){toast('Không đọc được ảnh này.');return;}renderBody();}});
+window.addEventListener('hashchange',()=>{const t=location.hash.slice(1);if(TABS.some(x=>x[0]===t)&&t!==S.tab)go(t);});
+setInterval(()=>{renderChips();renderMap();if(S.tab==='su-co'||S.tab==='lo-trinh')renderBody();},30000);
+
+const h0=location.hash.slice(1);if(TABS.some(x=>x[0]===h0))S.tab=h0;
+S.route=best().safe;
+render();
+})();
+</script>
+</body>
+</html>
